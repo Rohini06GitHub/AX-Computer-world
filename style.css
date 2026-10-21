@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskFlow — Task Manager</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ================= HEADER ================= -->
+<header class="app-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-logo">✓</div>
+      <div>
+        <h1>TaskFlow</h1>
+        <p class="tagline">Organise. Prioritise. Finish.</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="exportBtn" class="icon-btn" title="Export tasks (JSON)">⬇</button>
+      <button id="importBtn" class="icon-btn" title="Import tasks (JSON)">⬆</button>
+      <input type="file" id="importFile" accept="application/json" hidden />
+      <button id="themeToggle" class="icon-btn theme-toggle" title="Toggle dark mode">
+        <span class="theme-icon">🌙</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= STATS ================= -->
+  <section class="stats" id="stats">
+    <div class="stat-card">
+      <span class="stat-label">Total</span>
+      <span class="stat-value" id="statTotal">0</span>
+    </div>
+    <div class="stat-card accent-blue">
+      <span class="stat-label">Active</span>
+      <span class="stat-value" id="statActive">0</span>
+    </div>
+    <div class="stat-card accent-green">
+      <span class="stat-label">Completed</span>
+      <span class="stat-value" id="statDone">0</span>
+    </div>
+    <div class="stat-card accent-red">
+      <span class="stat-label">Overdue</span>
+      <span class="stat-value" id="statOverdue">0</span>
+    </div>
+  </section>
+
+  <section class="progress-box">
+    <div class="progress-top">
+      <span>Overall progress</span>
+      <strong id="progressPct">0%</strong>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </section>
+
+  <!-- ================= ADD TASK FORM ================= -->
+  <section class="card">
+    <form id="taskForm" class="task-form" autocomplete="off">
+      <div class="field grow">
+        <label for="title">Task</label>
+        <input type="text" id="title" placeholder="What needs to be done?" maxlength="120" required />
+      </div>
+
+      <div class="field">
+        <label for="category">Category</label>
+        <input list="categoryList" id="category" placeholder="General" maxlength="24" />
+        <datalist id="categoryList"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="priority">Priority</label>
+        <select id="priority">
+          <option value="low">🟢 Low</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="high">🔴 High</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="due">Due date</label>
+        <input type="date" id="due" />
+      </div>
+
+      <button type="submit" class="btn primary add-btn">+ Add Task</button>
+    </form>
+    <p class="form-error" id="formError" aria-live="polite"></p>
+  </section>
+
+  <!-- ================= TOOLBAR ================= -->
+  <section class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="search" placeholder="Search tasks…  (press / )" />
+    </div>
+
+    <div class="chips" id="statusChips">
+      <button class="chip active" data-status="all">All</button>
+      <button class="chip" data-status="active">Active</button>
+      <button class="chip" data-status="completed">Completed</button>
+      <button class="chip" data-status="overdue">Overdue</button>
+    </div>
+
+    <div class="selects">
+      <select id="filterCategory" title="Filter by category">
+        <option value="all">All categories</option>
+      </select>
+
+      <select id="filterPriority" title="Filter by priority">
+        <option value="all">All priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+
+      <select id="sortBy" title="Sort">
+        <option value="manual">Manual (drag)</option>
+        <option value="created-desc">Newest first</option>
+        <option value="created-asc">Oldest first</option>
+        <option value="due-asc">Due date ↑</option>
+        <option value="priority-desc">Priority ↓</option>
+        <option value="az">A → Z</option>
+      </select>
+
+      <button class="btn ghost danger" id="clearDone">Clear completed</button>
+    </div>
+  </section>
+
+  <!-- ================= TASK LIST ================= -->
+  <section>
+    <div class="list-head">
+      <h2>Your tasks</h2>
+      <span class="count-pill" id="shownCount">0 shown</span>
+    </div>
+
+    <ul id="taskList" class="task-list"></ul>
+
+    <div id="emptyState" class="empty hidden">
+      <div class="empty-emoji">🗂️</div>
+      <h3>Nothing here</h3>
+      <p>Add a task above or adjust your filters.</p>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <p>Tip: press <kbd>/</kbd> to search · <kbd>Esc</kbd> to close dialogs · drag tasks to reorder (Manual sort)</p>
+  </footer>
+</main>
+
+<!-- ================= EDIT MODAL ================= -->
+<div class="modal-backdrop hidden" id="editModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitleLbl">
+    <div class="modal-head">
+      <h3 id="editTitleLbl">Edit task</h3>
+      <button class="icon-btn" id="closeModal">✕</button>
+    </div>
+
+    <form id="editForm" class="modal-body">
+      <div class="field">
+        <label for="editTitle">Task</label>
+        <input type="text" id="editTitle" maxlength="120" required />
+      </div>
+      <div class="field">
+        <label for="editNotes">Notes</label>
+        <textarea id="editNotes" rows="3" maxlength="400" placeholder="Optional details…"></textarea>
+      </div>
+      <div class="row-3">
+        <div class="field">
+          <label for="editCategory">Category</label>
+          <input list="categoryList" id="editCategory" maxlength="24" />
+        </div>
+        <div class="field">
+          <label for="editPriority">Priority</label>
+          <select id="editPriority">
+            <option value="low">🟢 Low</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="high">🔴 High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="editDue">Due date</label>
+          <input type="date" id="editDue" />
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" id="cancelEdit">Cancel</button>
+        <button type="submit" class="btn primary">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= CONFIRM MODAL ================= -->
+<div class="modal-backdrop hidden" id="confirmModal">
+  <div class="modal small" role="alertdialog" aria-modal="true">
+    <div class="modal-head"><h3 id="confirmTitle">Are you sure?</h3></div>
+    <div class="modal-body">
+      <p id="confirmText" class="confirm-text">This action cannot be undone.</p>
+      <div class="modal-foot">
+        <button class="btn ghost" id="confirmNo">Cancel</button>
+        <button class="btn danger-solid" id="confirmYes">Yes, do it</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TOASTS ================= -->
+<div class="toast-stack" id="toasts"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
